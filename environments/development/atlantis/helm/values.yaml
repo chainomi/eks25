@@ -1,0 +1,383 @@
+## -------------------------- ##
+# Values to override for your instance.
+## -------------------------- ##
+
+# -- Provide a name to substitute for the full names of resources.
+fullnameOverride: ""
+
+# -- Provide a name to substitute for the name of the chart.
+nameOverride: ""
+
+# -- An option to override the atlantis url,
+# if not using an ingress, set it to the external IP.
+# Check values.yaml for examples.
+atlantisUrl: ""
+# Example:  http://10.0.0.0
+
+# -- Replace this with your own repo allowlist.
+orgAllowlist: ${org_allowlist}
+
+# -- Specify the log level for Atlantis.
+# Accepts: debug, info, warn, or error.
+logLevel: ""
+
+# -- If using GitHub, please enter your values as follows.
+# The chart will perform the base64 encoding for values that are stored in secrets.
+# The 'hostname' key is exclusive to GitHub Enterprise installations.
+# Check values.yaml for examples.
+
+environment:
+  # ATLANTIS_DEFAULT_TF_VERSION: v1.2.9
+  ATLANTIS_AUTOMERGE: true
+  ATLANTIS_WEB_BASIC_AUTH: true
+  ATLANTIS_WEB_USERNAME: ${atlantis_basic_auth_username}
+  ATLANTIS_WEB_PASSWORD: ${atlantis_basic_auth_password}
+  
+github:
+  user: ${github_user}
+  token: ${github_token_secret}
+  secret: ${github_webhook_secret}
+#   hostname: github.your.org
+
+# -- If using a GitHub App, please enter your values as follows.
+# The chart will perform the base64 encoding for you for values that are stored in secrets.
+# installationId is necessary when there are multiple installs of the Github App.
+# Check values.yaml for examples.
+githubApp: {}
+# githubApp:
+#   id: 123456
+#   installationId: 1
+#   slug: foo
+#   key: |
+#     -----BEGIN PRIVATE KEY-----
+#     ...
+#     -----END PRIVATE KEY-----
+#   secret: baz
+
+
+# -- If managing secrets outside the chart for the webhook, use this variable to reference the secret name
+vcsSecretName: ""
+
+# -- When referencing Terraform modules in private repositories, it may be helpful
+# (necessary?) to use redirection in a .gitconfig.
+# Check values.yaml for examples.
+gitconfig: ""
+# gitconfig: |
+# [url "https://YOUR_GH_TOKEN@github.com"]
+#   insteadOf = https://github.com
+# [url "https://YOUR_GH_TOKEN@github.com"]
+#   insteadOf = ssh://git@github.com
+# [url "https://oauth2:YOUR_GITLAB_TOKEN@gitlab.com"]
+#   insteadOf = https://gitlab.com
+# [url "https://oauth2:YOUR_GITLAB_TOKEN@gitlab.com"]
+#   insteadOf = ssh://git@gitlab.com
+# Source: https://stackoverflow.com/questions/42148841/github-clone-with-oauth-access-token
+
+# -- When true gitconfig file is mounted as read only.
+# When false, the gitconfig value will be copied to '/home/atlantis/.gitconfig' before starting the atlantis process,
+# instead of being mounted as a file.
+gitconfigReadOnly: true
+
+
+serviceAccountSecrets: {}
+# serviceAccountSecrets:
+#   credentials: <json file as base64 encoded string>
+#   credentials-staging: <json file as base64 encoded string>
+
+## -------------------------- ##
+# Default values for atlantis (override as needed).
+## -------------------------- ##
+
+# -- (int) [optional] Define the port you would like atlantis to run on. When 0, the value of service.targetPort is used.
+containerPort: 0
+
+image:
+  repository: ghcr.io/runatlantis/atlantis
+  # -- If not set appVersion field from Chart.yaml is used
+  tag: ""
+  pullPolicy: Always
+
+# -- Optionally specify an array of imagePullSecrets.
+# Secrets must be manually created in the namespace.
+# ref: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/.
+# Check values.yaml for examples.
+imagePullSecrets: []
+# imagePullSecrets:
+#   - myRegistryKeySecretName
+
+# -- Override atlantis main configuration by config map,
+# ref: https://www.runatlantis.io/docs/using-slack-hooks.html#configuring-atlantis.
+# Check values.yaml for examples.
+config: ""
+# config: |
+#   ---
+#   webhooks:
+#     - event: apply
+#       workspace-regex: .*
+#       branch-regex: .*
+#       kind: slack
+#       channel: my-channel
+
+# -- Use Server Side Repo Config,
+# ref: https://www.runatlantis.io/docs/server-side-repo-config.html.
+# Check values.yaml for examples.
+# Example with default configuration:
+repoConfig: |
+  ---
+  repos:
+  - id: /.*/
+    apply_requirements: [mergeable, undiverged]
+    workflow: default
+    allowed_overrides: []
+    allow_custom_workflows: false
+  workflows:
+    default:
+      plan:
+        steps: 
+        - init
+        - run: terraform validate
+        - plan
+      apply:
+        steps: [apply]
+
+#   metrics:
+#     prometheus:
+#       endpoint: /metrics
+
+# -- Enables atlantis to run on a fork Pull Requests.
+allowForkPRs: false
+
+# -- Enables atlantis to run on a draft Pull Requests.
+allowDraftPRs: false
+
+# -- Enables atlantis to hide previous plan comments.
+hidePrevPlanComments: false
+
+# -- Enables atlantis to hide no-changes plan comments from the pull request.
+hideUnchangedPlanComments: false
+
+# -- Sets the default terraform distribution to use. Can be set to terraform or opentofu.
+defaultTFDistribution: terraform
+
+# -- Sets the default terraform version to be used in atlantis server.
+# Check values.yaml for examples.
+defaultTFVersion: ""
+# Example: "0.12.0".
+
+# -- Disables running `atlantis apply` regardless of which flags are sent with it.
+disableApply: false
+
+# -- Disables running `atlantis apply` without any flags.
+disableApplyAll: false
+
+# -- Stops atlantis locking projects and or workspaces when running terraform.
+disableRepoLocking: false
+
+# -- Use Diff Markdown Format for color coding diffs.
+enableDiffMarkdownFormat: false
+
+# -- Optionally specify an username and a password for basic authentication.
+basicAuth:
+  username: ""
+  password: ""
+
+# -- If managing secrets outside the chart for the Basic Auth secret, use this variable to reference the secret name.
+basicAuthSecretName: ""
+
+# -- Optionally specify an API secret to enable the API.
+# Check values.yaml for examples.
+api: {}
+# api:
+#   secret: "s3cr3t"
+
+# -- If managing secrets outside the chart for the API secret, use this variable to reference the secret name. The key containing the secret must be called 'apisecret'.
+apiSecretName: ""
+
+# -- Override the command field of the Atlantis container.
+command: []
+
+# -- Common Labels for all resources created by this chart.
+commonLabels: {}
+
+livenessProbe:
+  enabled: true
+  # -- We only need to check every 60s since Atlantis is not a high-throughput service.
+  periodSeconds: 60
+  initialDelaySeconds: 5
+  timeoutSeconds: 5
+  successThreshold: 1
+  failureThreshold: 5
+  scheme: HTTP
+
+readinessProbe:
+  enabled: true
+  periodSeconds: 60
+  initialDelaySeconds: 5
+  timeoutSeconds: 5
+  successThreshold: 1
+  failureThreshold: 5
+  scheme: HTTP
+
+service:
+  type: ClusterIP
+  annotations: {}
+  port: 80
+  portName: ${app_name}
+
+statefulSet:
+  annotations: {}
+  labels: {}
+  securityContext:
+    fsGroup: 1000
+    # -- It is not recommended to run atlantis as root.
+    runAsUser: 100
+    fsGroupChangePolicy: "OnRootMismatch"
+  priorityClassName: ""
+  updateStrategy: {}
+  # -- Option to share process namespace with atlantis container.
+  shareProcessNamespace: false
+
+ingress:
+  enabled: true
+  ingressClassName:
+  apiVersion: ""
+  labels: {}
+  # -- Check values.yaml for examples.
+  annotations: 
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/load-balancer-name: ${app_name}-alb
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS":443}, {"HTTP":80}]'
+    alb.ingress.kubernetes.io/actions.ssl-redirect: '{"Type": "redirect", "RedirectConfig": { "Protocol": "HTTPS", "Port": "443", "StatusCode": "HTTP_301"}}'
+    alb.ingress.kubernetes.io/certificate-arn: ${alb_cert_arn}
+    alb.ingress.kubernetes.io/healthcheck-path: /
+    alb.ingress.kubernetes.io/healthcheck-interval-seconds: '15'
+    alb.ingress.kubernetes.io/healthcheck-timeout-seconds: '5'
+    alb.ingress.kubernetes.io/success-codes: ${alb_success_codes}
+    alb.ingress.kubernetes.io/healthy-threshold-count: '2'
+    alb.ingress.kubernetes.io/unhealthy-threshold-count: '2'   
+
+  path: /*
+  # --  Used when several paths under the same host, with different backend services, are required.
+  # Check values.yaml for examples.
+  # paths: 
+  #    - path: "/"
+  #      service: test1
+  #      port:
+  #    - path: "/path2"
+  #      service: test2
+  #      port:
+  # pathType: ImplementationSpecific
+  host: ${atlantis_domain}
+  # -- Used when several hosts are required.
+  # Check values.yaml for examples.
+  hosts: []
+  #   - host: chart-example.local
+  #     paths: ["/"]
+  #     service: chart-example1
+  #   - host: chart-example.local2
+  #     service: chart-example1
+  #     paths: ["/lala"]
+  # -- Check values.yaml for examples.
+  tls: []
+  #  - secretName: chart-example-tls
+  #    hosts:
+  #      - chart-example.local
+
+
+# -- Resources for Atlantis.
+# Check values.yaml for examples.
+resources:
+  requests:
+    memory: 1Gi
+    cpu: 1000m
+  limits:
+    memory: 1Gi
+    cpu: 1000m
+
+# -- Path to the data directory for the volumeMount.
+atlantisDataDirectory: /atlantis-data
+
+volumeClaim:
+  enabled: true
+  # -- Disk space available to check out repositories.
+  dataStorage: ${storage_size}
+  # -- Storage class name (if possible, use a resizable one).
+  storageClassName: ${storage_class_name}
+  accessModes: ["ReadWriteOnce"]
+
+# -- Replica count for Atlantis pods.
+replicaCount: 1
+
+test:
+  # -- Enables test container.
+  enabled: true
+  image: bats/bats
+  imageTag: 1.9.0
+  annotations: {}
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+
+serviceAccount:
+  # -- Specifies whether a ServiceAccount should be created.
+  create: true
+  # -- Set the `automountServiceAccountToken` field on the pod template spec.
+  # -- If false, no kubernetes service account token will be mounted to the pod.
+  mount: true
+  # -- The name of the ServiceAccount to use.
+  # If not set and create is true, a name is generated using the fullname template.
+  name: ${service_account_name}
+  # -- Annotations for the Service Account.
+  # Check values.yaml for examples.
+  # IRSA example:
+  annotations:
+    ${service_account_annotation}
+
+initConfig:
+  # -- Install providers/plugins into a path shared with the Atlantis pod.
+  enabled: false
+  image: alpine:latest
+  imagePullPolicy: IfNotPresent
+  # -- SharedDir is set as env var INIT_SHARED_DIR.
+  sharedDir: /plugins
+  sharedDirReadOnly: true
+  workDir: /tmp
+  # -- Size for the shared volume.
+  sizeLimit: 300Mi
+  # -- Security context for the container.
+  containerSecurityContext: {}
+  # -- Script to run on the init container.
+  # @default -- Check values.yaml.
+  script: |
+    #!/bin/sh
+    set -eoux pipefail
+
+    # example for terragrunt
+    TG_VERSION="v0.67.5"
+    TG_SHA256_SUM="4e5ae67854a774be6419f7215733990b481662375dc0bd5f2eda05211a692cf0"
+    TG_FILE="$${INIT_SHARED_DIR}/terragrunt"
+    wget https://github.com/gruntwork-io/terragrunt/releases/download/$${TG_VERSION}/terragrunt_linux_amd64 -O "$${TG_FILE}"
+    echo "$${TG_SHA256_SUM}  $${TG_FILE}" | sha256sum -c
+    chmod 755 "$${TG_FILE}"
+    terragrunt -v
+
+    # example for terragrunt-atlantis-config
+    TAC_VERSION="1.18.0" # without v
+    TAC_SHA256_SUM="59178dcd3e426abf4b5d8fcb1ac8dbdea548a04aa64eaf39be200484a5e6f2ca"
+    TAC_FILE="$${INIT_SHARED_DIR}/terragrunt-atlantis-config"
+    wget "https://github.com/transcend-io/terragrunt-atlantis-config/releases/download/v$${TAC_VERSION}/terragrunt-atlantis-config_$${TAC_VERSION}_linux_amd64"
+    echo "$${TAC_SHA256_SUM}  terragrunt-atlantis-config_$${TAC_VERSION}_linux_amd64" | sha256sum -c
+    cp -fv "terragrunt-atlantis-config_$${TAC_VERSION}_linux_amd64" "$${TAC_FILE}"
+    chmod 755 "$${TAC_FILE}"
+    terragrunt-atlantis-config version
+
+
+# -- Optionally specify dnsPolicy parameter to specify a DNS policy for a pod
+# Check https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/#pod-s-dns-policy
+dnsPolicy: "ClusterFirst"

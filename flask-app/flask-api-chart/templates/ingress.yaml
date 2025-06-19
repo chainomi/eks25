@@ -1,0 +1,38 @@
+{{- if .Values.ingress.enabled -}}
+{{- $servicePort := .Values.service.port -}}
+{{- $name := include "flask-api-chart.fullname" . -}}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "flask-api-chart.labels" . | nindent 4 }}
+  {{- with .Values.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  name: {{ $name }}
+spec:
+  rules:
+  {{- range .Values.ingress.hosts }}
+    - host: {{ .host}}
+      http: 
+        paths:
+        {{- range .paths }}
+        - path: {{ .path }}
+          pathType: {{ .pathType }}
+          backend:
+            service:
+              name: ssl-redirect
+              port:
+                name: use-annotation       
+        - path: {{ .path }}
+          pathType: {{ .pathType }}
+          backend:
+            service:
+              name: {{ $name }}
+              port:
+                number: {{ $servicePort }}
+       {{- end }}         
+   {{- end }}                  
+{{- end }}

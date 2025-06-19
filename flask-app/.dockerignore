@@ -1,0 +1,11 @@
+#ignore dockerfile 
+Dockerfile
+
+#ignore docker-compose
+docker-compose.yml
+
+#python venv folder
+/env
+
+# ci folder
+/ci

@@ -1,0 +1,26 @@
+{{- if .Values.serviceAccount.create -}}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "flask-api-chart.serviceAccountName" . }}
+  labels:
+    {{- include "flask-api-chart.labels" . | nindent 4 }}
+  {{- with .Values.serviceAccount.annotations }}  
+rules:
+  {{- toYaml $.Values.serviceAccountRole.rules | nindent 2 }}
+  {{- end }}
+{{- end }}
+---
+{{- if .Values.serviceAccount.create -}}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "flask-api-chart.serviceAccountName" . }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "flask-api-chart.serviceAccountName" . }}
+subjects:
+- kind: ServiceAccount
+  name: {{ include "flask-api-chart.serviceAccountName" . }}
+{{- end }}  
