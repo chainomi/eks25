@@ -24,7 +24,7 @@ module "eks" {
   managed_node_groups = {
     "core-node-group" = {
       min_size     = 2
-      max_size     = 5
+      max_size     = 2
       desired_size = 2
       disk_size    = 50
 
@@ -50,10 +50,10 @@ module "eks" {
   public_subnet_cidrs  = ["10.0.101.0/24", "10.0.102.0/24"]
 
   # Cert manager
-  cert_manager_route53_hosted_zone_arns = [""]
+  cert_manager_route53_hosted_zone_arns = ["*"]
 
   # Cluster access
-  # admin_access_role_arn = ""
+  cicd_runner_access_role_arn = "arn:aws:iam::488144151286:user/chainomi"
 
 }
 

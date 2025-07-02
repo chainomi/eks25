@@ -39,14 +39,41 @@ module "eks" {
   # EKS Managed Node Group(s)
   # Note - a security group is automatically created for the node group with rules limiting traffic between the node and other cluster resources
   eks_managed_node_group_defaults = {
-
     # Use below to add additional sg's as to all managed node groups e.g. efs
+
+    ami_type       = "AL2023_x86_64_STANDARD"
     vpc_security_group_ids = []
+
+    enable_bootstrap_user_data = true
+    cloudinit_pre_nodeadm = [{
+      content      = <<-EOT
+        ---
+        apiVersion: node.eks.aws/v1alpha1
+        kind: NodeConfig
+        spec:
+          kubelet:
+            config:
+              shutdownGracePeriod: 30s
+              featureGates:
+                DisableKubeletCloudCredentialProviders: true
+      EOT
+      content_type = "application/node.eks.aws"
+    }]
+    cloudinit_post_nodeadm = [{ 
+      content       = <<-EOT
+        sudo ipvsadm --set 3600 120 300
+        sudo sysctl net.ipv6.conf.all.disable_ipv6=1
+        sudo /usr/sbin/sysctl net.netfilter.nf_conntrack_tcp_be_liberal=1
+      EOT 
+      content_type = "text/x-shellscript; charset=\"us-ascii\"" 
+    }]
 
     iam_role_additional_policies = {
       additional = var.additional_node_policies_arn
     }
   }
+
+  
 
   eks_managed_node_groups = var.managed_node_groups
 
@@ -72,7 +99,7 @@ module "eks" {
   }
 
   # grant cluster creator role admin access to cluster
-  enable_cluster_creator_admin_permissions = true
+  enable_cluster_creator_admin_permissions = var.cicd_runner_access_role_arn != "" ? false : true
 
   node_security_group_tags = {
     # NOTE - if creating multiple security groups with this module, only tag the
@@ -160,7 +187,7 @@ module "eks_blueprints_addons" {
   enable_external_secrets                      = true
   enable_secrets_store_csi_driver              = true
   enable_secrets_store_csi_driver_provider_aws = true
-  enable_cert_manager                          = false
+  enable_cert_manager                          = true
   cert_manager_route53_hosted_zone_arns        = var.cert_manager_route53_hosted_zone_arns
 
   # Turn off mutation webhook for services to avoid ordering issue
@@ -260,22 +287,22 @@ module "eks_ack_addons" {
 
 # This module updates the Route 53 record for the ingress domain with the proper alb dns address 
 
-module "external_dns" {
-  source = "git::https://github.com/DNXLabs/terraform-aws-eks-external-dns.git"
+# module "external_dns" {
+#   source = "git::https://github.com/DNXLabs/terraform-aws-eks-external-dns.git"
 
-  cluster_identity_oidc_issuer     = module.eks.cluster_oidc_issuer_url
-  cluster_identity_oidc_issuer_arn = module.eks.oidc_provider_arn
-  cluster_name                     = module.eks.cluster_name
-  helm_chart_version               = "6.14.4"
+#   cluster_identity_oidc_issuer     = module.eks.cluster_oidc_issuer_url
+#   cluster_identity_oidc_issuer_arn = module.eks.oidc_provider_arn
+#   cluster_name                     = module.eks.cluster_name
+#   helm_chart_version               = "6.14.4"
 
-  settings = {
-    "policy"     = "sync"                       # Modify how DNS records are sychronized between sources and providers.
-    "txtOwnerId" = "${var.cluster_name}-domain" #unique identifier for each external DNS instance
-  }
-  # Helm chart repo - https://artifacthub.io/packages/helm/bitnami/external-dns
-  # Module repo - https://github.com/DNXLabs/terraform-aws-eks-external-dns
+#   settings = {
+#     "policy"     = "sync"                       # Modify how DNS records are sychronized between sources and providers.
+#     "txtOwnerId" = "${var.cluster_name}-domain" #unique identifier for each external DNS instance
+#   }
+#   # Helm chart repo - https://artifacthub.io/packages/helm/bitnami/external-dns
+#   # Module repo - https://github.com/DNXLabs/terraform-aws-eks-external-dns
 
-}
+# }
 
 locals {
   karpenter_role_name = "karpenter-role"

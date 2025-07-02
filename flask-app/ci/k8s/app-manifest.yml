@@ -1,3 +1,52 @@
+# apiVersion: v1
+# kind: Service
+# metadata:
+#   name: nginx-service
+# spec:
+#   type: ClusterIP
+#   ports:
+#    - port: 80
+#      targetPort: 80 
+#   selector:
+#     app: app 
+#     tier: ngnix
+# ---
+# apiVersion: apps/v1
+# kind: Deployment
+# metadata:
+#   name: nginx-deployment
+#   labels:
+#     app: app 
+#     tier: nginx
+# spec:
+#   selector:
+#     matchLabels:
+#       app: app 
+#       tier: nginx
+#   replicas: 3
+#   template:
+#     metadata:
+#       name: flask-api
+#       labels:
+#         app: app 
+#         tier: nginx
+#         sidecar.istio.io/inject: "true"
+#     spec:
+#       containers:
+#         - name: nginx
+#           image: httpd         
+#           resources:
+#             limits:
+#               cpu: 500m
+#               memory: 512Mi
+#             requests:
+#               cpu: 500m
+#               memory: 512Mi  
+#           ports:
+#           - containerPort: 80
+#             name: nginx
+
+---
 apiVersion: v1
 kind: Service
 metadata:
@@ -5,10 +54,8 @@ metadata:
 spec:
   type: ClusterIP
   ports:
-  #  - port: 8000 
-  #    targetPort: 8000 
-   - port: 80
-     targetPort: 80 
+   - port: 8000 
+     targetPort: 8000 
   selector:
     app: app 
     tier: api
@@ -36,8 +83,7 @@ spec:
     spec:
       containers:
         - name: flask-api
-          # image: 488144151286.dkr.ecr.us-west-1.amazonaws.com/flask-api:latest #change
-          image: nginx #change          
+          image: 488144151286.dkr.ecr.us-west-1.amazonaws.com/flask-api:latest #change      
           resources:
             limits:
               cpu: 500m
@@ -48,6 +94,6 @@ spec:
           ports:
           - containerPort: 8000
             name: flask-api
-      serviceAccountName: flask-api-rbac      
+      serviceAccountName: flask-api-rbac         
 
 

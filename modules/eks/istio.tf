@@ -1,6 +1,7 @@
 locals {
   istio_chart_url     = "https://istio-release.storage.googleapis.com/charts"
-  istio_chart_version = "1.26.0"
+  # istio_chart_version = "1.26.0"
+  istio_chart_version = "1.23.0"  
   istio_namespace     = "istio-system"
 }
 
@@ -61,10 +62,14 @@ resource "helm_release" "istio-ingress" {
         service = {
           type = "ClusterIP"
           annotations = {
-            # "service.beta.kubernetes.io/aws-load-balancer-type"            = "external"
+            # "service.beta.kubernetes.io/aws-load-balancer-type"            = "nlb-ip"
+            # # "service.beta.kubernetes.io/aws-load-balancer-nlb-target-type" = "ip"
+            # # "service.beta.kubernetes.io/aws-load-balancer-scheme"          = "internet-facing"
+            # # "service.beta.kubernetes.io/aws-load-balancer-attributes"      = "load_balancing.cross_zone.enabled=true"
+            # "service.beta.kubernetes.io/aws-load-balancer-name" = "istio-ingress-internal-lb"            
             # "service.beta.kubernetes.io/aws-load-balancer-nlb-target-type" = "ip"
-            # "service.beta.kubernetes.io/aws-load-balancer-scheme"          = "internet-facing"
-            # "service.beta.kubernetes.io/aws-load-balancer-attributes"      = "load_balancing.cross_zone.enabled=true"
+            # "service.beta.kubernetes.io/aws-load-balancer-scheme"          = "internal"
+            # "service.beta.kubernetes.io/aws-load-balancer-attributes"      = "load_balancing.cross_zone.enabled=true"            
           }
         }
       }
@@ -74,43 +79,3 @@ resource "helm_release" "istio-ingress" {
   # https://github.com/aws-ia/terraform-aws-eks-blueprints/blob/main/patterns/istio/README.md#deploy 
   depends_on = [helm_release.istio-base, helm_release.istiod] 
 }
-
-# resource "time_static" "restarted_at" {}
-
-# resource "kubernetes_annotations" "example" {
-#   api_version = "apps/v1"
-#   kind        = "Deployment"
-#   metadata {
-#     name = "istio-ingress"
-#   }
-#   template_annotations = {
-#     "kubectl.kubernetes.io/restartedAt" = time_static.restarted_at.rfc3339
-#   }
-# }
-
-
-# resource "null_resource" "istio_ingress_trigger" {
-#   triggers = {
-#     helm_release_sha = sha1(jsonencode(helm_release.istio-ingress))
-#   }
-# }
-
-# resource "time_static" "restarted_at" {
-#   depends_on = [null_resource.istio_ingress_trigger]
-# }
-
-# resource "kubernetes_annotations" "example" {
-#   api_version = "apps/v1"
-#   kind        = "Deployment"
-
-#   metadata {
-#     name      = "istio-ingress"
-#     namespace = "istio-ingress"
-#   }
-
-#   template_annotations = {
-#     "kubectl.kubernetes.io/restartedAt" = time_static.restarted_at.rfc3339
-#   }
-
-#   depends_on = [helm_release.istio-ingress, time_static.restarted_at]
-# }

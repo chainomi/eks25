@@ -1,19 +1,60 @@
+# apiVersion: networking.istio.io/v1
+# kind: Gateway
+# metadata:
+#   name: flask-api-gateway
+#   # namespace: istio-ingress
+# spec:
+#   # The selector matches the ingress gateway pod labels.
+#   # If you installed Istio using Helm following the standard documentation, this would be "istio=ingress"
+#   selector:
+#     istio: ingressgateway # use istio default controller
+#   servers:
+#   - port:
+#       number: 80
+#       name: http
+#       protocol: HTTP
+#     hosts:
+#     - "*"
+---
 apiVersion: networking.istio.io/v1
 kind: Gateway
 metadata:
   name: flask-api-gateway
 spec:
-  # The selector matches the ingress gateway pod labels.
-  # If you installed Istio using Helm following the standard documentation, this would be "istio=ingress"
   selector:
-    istio: ingressgateway # use istio default controller
+    istio: ingressgateway
   servers:
   - port:
-      number: 80
-      name: http
-      protocol: HTTP
+      number: 443
+      name: https
+      protocol: HTTPS
+    tls:
+      mode: SIMPLE
+      credentialName: ingress-cert # This should match the Certificate secretName
     hosts:
-    - "*"
+    - flask-api.chainomi.link # This should match a DNS name in the Certificate
+    - flask-api2.chainomi.link
+    - flask-api3.chainomi.link
+    - flask-api4.chainomi.link        
+---
+# apiVersion: networking.istio.io/v1
+# kind: VirtualService
+# metadata:
+#   name: nginx-virtual-service
+# spec:
+#   hosts:
+#   - "*"
+#   gateways:
+#   - flask-api-gateway      
+#   http:
+#   - match:
+#     - uri:
+#         prefix: /
+#     route:
+#     - destination:
+#         host: nginx-service
+#         port:
+#           number: 80     
 ---
 apiVersion: networking.istio.io/v1
 kind: VirtualService
@@ -28,9 +69,8 @@ spec:
   - match:
     - uri:
         prefix: /
-    - route:
-      - destination:
-          host: flask-api-service  # Destination service for TCP traffic
-          port:
-            # number: 8000          
-            number: 80                   
+    route:
+    - destination:
+        host: flask-api-service 
+        port:
+          number: 8000                     
