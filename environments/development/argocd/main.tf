@@ -24,7 +24,10 @@ locals {
 
   # Repo information
   github_org_url             = "https://github.com/chainomi"
-  github_repo_name           = "flask-app-argocd-demo"
+  github_repo_name           = "flask-app-argocd-demo1"
+  github_repos = {
+    flask-app-argocd-demo = "https://github.com/chainomi/flask-app-argocd-demo"
+  }
   github_repo_url            = "https://github.com/chainomi/flask-app-argocd-demo"
   github_app_id              = jsondecode(data.aws_secretsmanager_secret_version.github.secret_string)["gh_app_id"]
   github_app_installation_id = jsondecode(data.aws_secretsmanager_secret_version.github.secret_string)["gh_app_install_id"]
@@ -81,6 +84,7 @@ resource "helm_release" "argo-cd" {
 
       github_org_url             = local.github_org_url
       github_repo_name           = local.github_repo_name
+      github_repos = local.github_repos
       github_repo_url            = local.github_repo_url
       github_app_id              = local.github_app_id
       github_app_installation_id = local.github_app_installation_id

@@ -84,6 +84,13 @@ configs:
   # -- Repositories list to be used by applications
   ## Creates a secret for each key/value specified below to create repositories
   repositories:
+  %{ for key, value in github_repos ~}
+  ${key}:
+      name: ${key}
+      url: ${value}
+      type: git
+      credentialTemplate: github-org-creds
+  %{ endfor ~}
     # github:
       # type: git
       # name: {github_repo_name}
@@ -101,6 +108,7 @@ configs:
       url: ${github_repo_url}
       type: git
       credentialTemplate: github-org-creds
+
   secret:
     # -- Bcrypt hashed admin password
     ## Argo expects the password in the secret to be bcrypt hashed. You can create this hash with
