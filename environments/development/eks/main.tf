@@ -44,6 +44,25 @@ module "eks" {
     }
   }
 
+  karpenter = {
+    node_pools = {
+      general = {
+        ami_family     = "AL2023"
+        ami_alias      = "al2023@latest"
+        instance_types = ["c5a.4xlarge", "c5ad.8xlarge"]
+        capacity_type  = ["on-demand"]
+        volume_size    = "50Gi"
+        volume_type    = "gp3"
+
+        labels = {
+          WorkerType    = "ON_DEMAND"
+          NodeGroupType = "karpenter"
+          environment   = local.environment
+        }
+      }
+    }
+  }
+
   # Networking
   vpc_cidr             = "10.0.0.0/16"
   private_subnet_cidrs = ["10.0.1.0/24", "10.0.2.0/24"]
@@ -52,6 +71,18 @@ module "eks" {
   # Cert manager
   cert_manager_route53_hosted_zone_arns = ["*"]
 
+  external_dns = {
+    aws = {
+      service_account_name    = "external-dns-aws"
+      domain_filter           = ["*"]
+      allowed_hosted_zone_ids = ["*"]
+    }
+    # cloudflare = {
+    #   service_account_name = "external-dns-cloudflare"
+    #   api_token            = ""
+    #   domain_filter        = ["*"]
+    # }
+  }
   # Cluster access
   cicd_runner_access_role_arn = "arn:aws:iam::488144151286:user/chainomi"
 

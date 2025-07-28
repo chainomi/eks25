@@ -41,7 +41,7 @@ module "eks" {
   eks_managed_node_group_defaults = {
     # Use below to add additional sg's as to all managed node groups e.g. efs
 
-    ami_type       = "AL2023_x86_64_STANDARD"
+    ami_type               = "AL2023_x86_64_STANDARD"
     vpc_security_group_ids = []
 
     enable_bootstrap_user_data = true
@@ -59,13 +59,13 @@ module "eks" {
       EOT
       content_type = "application/node.eks.aws"
     }]
-    cloudinit_post_nodeadm = [{ 
-      content       = <<-EOT
+    cloudinit_post_nodeadm = [{
+      content      = <<-EOT
         sudo ipvsadm --set 3600 120 300
         sudo sysctl net.ipv6.conf.all.disable_ipv6=1
         sudo /usr/sbin/sysctl net.netfilter.nf_conntrack_tcp_be_liberal=1
       EOT 
-      content_type = "text/x-shellscript; charset=\"us-ascii\"" 
+      content_type = "text/x-shellscript; charset=\"us-ascii\""
     }]
 
     iam_role_additional_policies = {
@@ -73,7 +73,7 @@ module "eks" {
     }
   }
 
-  
+
 
   eks_managed_node_groups = var.managed_node_groups
 
@@ -304,55 +304,3 @@ module "eks_ack_addons" {
 
 # }
 
-locals {
-  karpenter_role_name = "karpenter-role"
-}
-
-module "karpenter" {
-  source  = "terraform-aws-modules/eks/aws//modules/karpenter"
-  version = "20.34.0"
-
-  cluster_name = module.eks.cluster_name
-
-  enable_v1_permissions = true
-
-  enable_pod_identity             = true
-  create_pod_identity_association = true
-
-  # Name needs to match role name passed to the EC2NodeClass
-  node_iam_role_name = local.karpenter_role_name
-
-
-  # Used to attach additional IAM policies to the Karpenter node IAM role
-  node_iam_role_additional_policies = {
-    AmazonSSMManagedInstanceCore = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
-  }
-}
-
-resource "helm_release" "karpenter" {
-  namespace           = "kube-system"
-  name                = "karpenter"
-  repository          = "oci://public.ecr.aws/karpenter"
-  repository_username = data.aws_ecrpublic_authorization_token.token.user_name
-  repository_password = data.aws_ecrpublic_authorization_token.token.password
-  chart               = "karpenter"
-  version             = "1.1.1"
-  wait                = false
-
-  values = [
-    <<-EOT
-    serviceAccount:
-      name: ${module.karpenter.service_account}    
-    nodeSelector:
-      karpenter.sh/controller: 'true'
-    dnsPolicy: Default
-    settings:
-      clusterName: ${module.eks.cluster_name}
-      clusterEndpoint: ${module.eks.cluster_endpoint}
-      interruptionQueue: ${module.karpenter.queue_name}
-    webhook:
-      enabled: false      
-    EOT
-  ]
-  depends_on = [module.karpenter]
-}

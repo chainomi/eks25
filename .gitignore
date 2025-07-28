@@ -1,3 +1,6 @@
+# general
+*.txt
+
 # ignore terraform files
 **/.terraform/*
 *.tfstate

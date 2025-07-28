@@ -32,27 +32,26 @@ environment:
   ATLANTIS_WEB_BASIC_AUTH: true
   ATLANTIS_WEB_USERNAME: ${atlantis_basic_auth_username}
   ATLANTIS_WEB_PASSWORD: ${atlantis_basic_auth_password}
+  ATLANTIS_WRITE_GIT_CREDS: true  # this is needed when using github app
   
-github:
-  user: ${github_user}
-  token: ${github_token_secret}
-  secret: ${github_webhook_secret}
+# github:
+#   user: {github_user}
+#   token: {github_token_secret}
+#   secret: {github_webhook_secret}
 #   hostname: github.your.org
 
 # -- If using a GitHub App, please enter your values as follows.
 # The chart will perform the base64 encoding for you for values that are stored in secrets.
 # installationId is necessary when there are multiple installs of the Github App.
 # Check values.yaml for examples.
-githubApp: {}
-# githubApp:
-#   id: 123456
-#   installationId: 1
-#   slug: foo
-#   key: |
-#     -----BEGIN PRIVATE KEY-----
-#     ...
-#     -----END PRIVATE KEY-----
-#   secret: baz
+githubApp:
+  id: "${github_app_id}"
+  installationId: "${github_app_installation_id}"
+  key: |
+    -----BEGIN PRIVATE KEY-----
+    ${github_app_private_key}
+    -----END PRIVATE KEY-----
+  secret: ${github_webhook_secret}
 
 
 # -- If managing secrets outside the chart for the webhook, use this variable to reference the secret name
@@ -127,9 +126,11 @@ repoConfig: |
   repos:
   - id: /.*/
     apply_requirements: [mergeable, undiverged]
+    import_requirements: [mergeable, undiverged]
     workflow: default
     allowed_overrides: []
     allow_custom_workflows: false
+    delete_source_branch_on_merge: true
   workflows:
     default:
       plan:
@@ -139,6 +140,26 @@ repoConfig: |
         - plan
       apply:
         steps: [apply]
+
+# Use below for a production setup were approval is needed.
+# repos:
+# - id: /.*/
+#   apply_requirements: [approved, mergeable, undiverged]
+#   import_requirements: [approved, mergeable, undiverged]
+#   workflow: default
+#   allowed_overrides: []
+#   allow_custom_workflows: false
+#   delete_source_branch_on_merge: true
+# workflows:
+#   default:
+#     plan:
+#       steps: 
+#       - init
+#       - run: terraform validate
+#       - plan
+#     apply:
+#       steps: [apply]
+
 
 #   metrics:
 #     prometheus:

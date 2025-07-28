@@ -1,0 +1,150 @@
+# https://github.com/argoproj/argo-helm/blob/main/charts/argo-cd/values.yaml
+
+global:
+  domain: ${domain}
+  securityContext: # Set deployments securityContext/fsGroup to 999 so that the user of the docker image can use IAM Authenticator. We need this because the IAM Authenticator will try to mount a secret on /var/run/secrets/eks.amazonaws.com/serviceaccount/token. If the correct fsGroup (999 corresponds to the argocd user) isn’t set, this will fail.
+    runAsUser: 999
+    runAsGroup: 999
+    fsGroup: 999
+
+configs:
+  credentialTemplates:
+    github-org-creds:
+      url: ${github_org_url}
+      githubAppID: "${github_app_id}"
+      githubAppInstallationID: "${github_app_installation_id}"
+      # githubAppEnterpriseBaseUrl: https://ghe.example.com/api/v3
+      githubAppPrivateKey: |
+        -----BEGIN OPENSSH PRIVATE KEY-----
+        ${github_app_private_key}
+        -----END OPENSSH PRIVATE KEY-----
+  cm: {}
+    # # OIDC configuration
+    # oidc.config: |
+    #       name: Azure
+    #       issuer: https://login.microsoftonline.com/{directory_tenant_id}/v2.0
+    #       clientID: {azure_ad_application_client_id}
+    #       clientSecret: {client_secret}
+    #       requestedIDTokenClaims:
+    #         groups:
+    #             essential: true
+    #             value: "SecurityGroup"
+    #       requestedScopes:
+    #         - openid
+    #         - profile
+    #         - email
+  rbac: {}
+    # -- File containing user-defined policies and role definitions.
+    # Policy rules are in the form:
+    #  p, subject, resource, action, object, effect
+    # Role definitions and bindings are in the form:
+    #  g, subject, inherited-subject
+    # policy.csv: |
+    #   p, role:org-admin, applications, *, */*, allow
+    #   p, role:org-admin, applicationsets, *, */*, allow
+    #   p, role:org-admin, clusters, *, */*, allow
+    #   p, role:org-admin, projects, *, */*, allow
+    #   p, role:org-admin, repositories, *, */*, allow
+    #   p, role:org-admin, accounts, *, */*, allow
+    #   p, role:org-admin, certificates, *, */*, allow
+    #   p, role:org-admin, gpgkeys, *, */*, allow
+    #   p, role:org-admin, logs, *, */*, allow
+    #   p, role:org-admin, exec, *, */*, allow
+    #   p, role:org-admin, extensions, *, */*, allow
+    #   g, {group_object_id_systems_team}, role:org-admin
+
+    # -- OIDC scopes to examine during rbac enforcement (in addition to `sub` scope).
+    # The scope value can be a string, or a list of strings.
+    # scopes: "[groups, email]"
+
+  params:
+    server.insecure: true
+  
+  clusterCredentials:
+    # development:
+    #   server: {development_cluster_api_server} # Production account EKS cluster API server endpoint 
+    #   config:
+    #     awsAuthConfig:
+    #       clusterName: {development_cluster_name}
+    #       roleARN: {development_cluster_cicd_role} # Production account EKS cicd role arn
+    #     tlsClientConfig:
+    #       # Base64 encoded PEM-encoded
+    #       caData: {development_cluster_ca_cert}  # EKS cluster certificate authority
+    
+    # production:
+    #   server: {production_cluster_api_server} # Production account EKS cluster API server endpoint 
+    #   config:
+    #     awsAuthConfig:
+    #       clusterName: {production_cluster_name}
+    #       roleARN: {production_cluster_cicd_role} # Production account EKS cicd role arn
+    #     tlsClientConfig:
+    #       # Base64 encoded PEM-encoded
+    #       caData: {production_cluster_ca_cert}  # EKS cluster certificate authority
+
+  # -- Repositories list to be used by applications
+  ## Creates a secret for each key/value specified below to create repositories
+  repositories:
+    # github:
+      # type: git
+      # name: {github_repo_name}
+      # url: {github_url} # e.g. https://github.com/YOUR_ORG
+      # githubApp:
+      #   id: {github_app_id}                     # GitHub App ID
+      #   installationID: {github_app_installation_id}       # GitHub App Installation ID
+      #   privateKeySecret:
+      #     name: argocd-secret          # Name of the auto-created secret
+      #     key: githubAppPrivateKey     # Key within the secret to look for
+    
+    # example below uses credential template in configs.credentialTemplates
+    github:
+      name: ${github_repo_name}
+      url: ${github_repo_url}
+      type: git
+      credentialTemplate: github-org-creds
+  secret:
+    # -- Bcrypt hashed admin password
+    ## Argo expects the password in the secret to be bcrypt hashed. You can create this hash with
+    ## `htpasswd -nbBC 10 "" $ARGO_PWD | tr -d ':\n' | sed 's/$2y/$2a/'`
+    argocdServerAdminPassword: ${argocd_admin_password}
+    
+    # Add other secrets to argocd-secret   
+    
+    githubAppPrivateKey: |
+      -----BEGIN RSA PRIVATE KEY-----
+        ${github_app_private_key}
+      -----END RSA PRIVATE KEY-----
+
+    # webhook.github.secret: {github_webhook_secret}        
+
+    extra: {}
+
+server:
+  ingress:
+    enabled: true
+    controller: aws
+    ingressClassName: alb
+    annotations:
+      alb.ingress.kubernetes.io/load-balancer-name: ${name}-eks-lb
+      alb.ingress.kubernetes.io/group.name: ${name}-eks
+      alb.ingress.kubernetes.io/scheme: internet-facing
+      alb.ingress.kubernetes.io/target-type: ip
+      alb.ingress.kubernetes.io/backend-protocol: HTTP
+      alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS":80}, {"HTTPS":443}]'
+      alb.ingress.kubernetes.io/certificate-arn: ${alb_cert_arn}           
+      alb.ingress.kubernetes.io/ssl-redirect: '443'
+    aws:
+      serviceType: ClusterIP
+      backendProtocolVersion: GRPC
+
+  serviceAccount:
+    create: true
+    name: ${service_account_name}
+    annotations: ${service_account_annotation} # Development account - IAM role for argocd service account
+    automountServiceAccountToken: true
+
+controller:
+  serviceAccount:
+    create: true
+    name: ${application_controller_service_account_name}
+    annotations: ${service_account_annotation} # Development account - IAM role for argocd service account
+    automountServiceAccountToken: true 

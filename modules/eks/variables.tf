@@ -62,3 +62,11 @@ variable "managed_node_groups" {
 variable "additional_cluster_security_groud_ids" {
   description = "List of additional security group IDs for cluster endpoint"
 }
+
+variable "karpenter" {
+  description = "Karpenter nodeclass and nodepool configuration"
+}
+
+variable "external_dns" {
+  description = "External dns configurations for aws and cloudflare providers"
+}

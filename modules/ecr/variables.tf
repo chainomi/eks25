@@ -1,5 +1,5 @@
 variable "repo_list" {
-    type = list
+  type = list(any)
 }
 
 variable "image_tag_mutability" {}

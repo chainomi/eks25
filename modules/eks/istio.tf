@@ -1,7 +1,7 @@
 locals {
-  istio_chart_url     = "https://istio-release.storage.googleapis.com/charts"
+  istio_chart_url = "https://istio-release.storage.googleapis.com/charts"
   # istio_chart_version = "1.26.0"
-  istio_chart_version = "1.23.0"  
+  istio_chart_version = "1.23.0"
   istio_namespace     = "istio-system"
 }
 
@@ -77,5 +77,5 @@ resource "helm_release" "istio-ingress" {
   ]
   # This dependency is needed to solve an issue with the istio ingressgateway deployment needing a restart after istio base and istiod are running
   # https://github.com/aws-ia/terraform-aws-eks-blueprints/blob/main/patterns/istio/README.md#deploy 
-  depends_on = [helm_release.istio-base, helm_release.istiod] 
+  depends_on = [helm_release.istio-base, helm_release.istiod]
 }

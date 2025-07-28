@@ -1,8 +1,11 @@
 
 
-terraform plan -out tf.plan && terraform show -no-color tf.plan > tfplan.txt
+# Commands
 
-aws eks --region $(terraform output -raw region) update-kubeconfig --name $(terraform output -raw cluster_name)
+1. Plan eks cluster - `make plan service=eks`
+2. Apply eks cluster - `make apply service=eks`
+3. Destroy eks cluster - `make destroy service=eks`
+4. Update kube config - `make eks-auth service=eks`
 
 # Notes
 1. Need to enable pod identity agent on main eks module otherwise karpenter controller will go into a crash loop trying to retrieve permissions for AWS services
