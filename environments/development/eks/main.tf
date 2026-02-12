@@ -8,6 +8,16 @@ locals {
 
 data "aws_caller_identity" "current" {}
 
+resource "aws_sns_topic" "eks_alerts" {
+  name = "${local.cluster_name}-eks-alerts"
+}
+
+resource "aws_sns_topic_subscription" "eks_alerts_email" {
+  topic_arn = aws_sns_topic.eks_alerts.arn
+  protocol  = "email"
+  endpoint  = "chainomi@gmail.com"
+}
+
 # EKS cluster 
 module "eks" {
   source          = "../../../modules/eks/"
@@ -86,9 +96,14 @@ module "eks" {
   # Cluster access
   cicd_runner_access_role_arn = "arn:aws:iam::488144151286:user/chainomi"
 
+  cloudwatch_alarms = {
+    enabled       = true
+    sns_topic_arn = aws_sns_topic.eks_alerts.arn
+  }  
+
 }
 
-# EKS cluster 
+# ECR
 module "ecr" {
   source               = "../../../modules/ecr/"
   repo_list            = ["flask-api"]

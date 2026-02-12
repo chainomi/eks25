@@ -43,4 +43,49 @@ output "vpc_id" {
   value       = module.vpc.vpc_id
 }
 
+# CloudWatch Alarms Outputs
+output "cloudwatch_alarm_arns" {
+  description = "Map of CloudWatch alarm ARNs by alarm type"
+  value = var.cloudwatch_alarms.enabled ? {
+    # Cluster-wide alarms (single alarm each)
+    cpu_high                = length(aws_cloudwatch_metric_alarm.node_cpu_high) > 0 ? aws_cloudwatch_metric_alarm.node_cpu_high[0].arn : null
+    memory_high             = length(aws_cloudwatch_metric_alarm.node_memory_high) > 0 ? aws_cloudwatch_metric_alarm.node_memory_high[0].arn : null
+    disk_high               = length(aws_cloudwatch_metric_alarm.node_disk_high) > 0 ? aws_cloudwatch_metric_alarm.node_disk_high[0].arn : null
+    network_transmit_errors = length(aws_cloudwatch_metric_alarm.node_network_transmit_errors) > 0 ? aws_cloudwatch_metric_alarm.node_network_transmit_errors[0].arn : null
+    node_status_not_ready   = length(aws_cloudwatch_metric_alarm.node_status_not_ready) > 0 ? aws_cloudwatch_metric_alarm.node_status_not_ready[0].arn : null
+    pod_count_high          = length(aws_cloudwatch_metric_alarm.pod_count_high) > 0 ? aws_cloudwatch_metric_alarm.pod_count_high[0].arn : null
+    composite_critical      = length(aws_cloudwatch_composite_alarm.cluster_critical) > 0 ? aws_cloudwatch_composite_alarm.cluster_critical[0].arn : null
+
+    # Per-node-group alarms (one per node group)
+    node_count_low = {
+      for ng_name, alarm in aws_cloudwatch_metric_alarm.node_count_low : ng_name => alarm.arn
+    }
+  } : {
+    # Empty structure matching the enabled case
+    cpu_high                = null
+    memory_high             = null
+    disk_high               = null
+    network_transmit_errors = null
+    node_status_not_ready   = null
+    pod_count_high          = null
+    composite_critical      = null
+    node_count_low          = {}
+  }
+}
+
+output "cloudwatch_alarm_names" {
+  description = "List of all CloudWatch alarm names created"
+  value = var.cloudwatch_alarms.enabled ? concat(
+    # Cluster-wide alarm names
+    length(aws_cloudwatch_metric_alarm.node_cpu_high) > 0 ? [aws_cloudwatch_metric_alarm.node_cpu_high[0].alarm_name] : [],
+    length(aws_cloudwatch_metric_alarm.node_memory_high) > 0 ? [aws_cloudwatch_metric_alarm.node_memory_high[0].alarm_name] : [],
+    length(aws_cloudwatch_metric_alarm.node_disk_high) > 0 ? [aws_cloudwatch_metric_alarm.node_disk_high[0].alarm_name] : [],
+    length(aws_cloudwatch_metric_alarm.node_network_transmit_errors) > 0 ? [aws_cloudwatch_metric_alarm.node_network_transmit_errors[0].alarm_name] : [],
+    length(aws_cloudwatch_metric_alarm.node_status_not_ready) > 0 ? [aws_cloudwatch_metric_alarm.node_status_not_ready[0].alarm_name] : [],
+    length(aws_cloudwatch_metric_alarm.pod_count_high) > 0 ? [aws_cloudwatch_metric_alarm.pod_count_high[0].alarm_name] : [],
+    length(aws_cloudwatch_composite_alarm.cluster_critical) > 0 ? [aws_cloudwatch_composite_alarm.cluster_critical[0].alarm_name] : [],
+    # Per-node-group alarm names
+    [for alarm in aws_cloudwatch_metric_alarm.node_count_low : alarm.alarm_name]
+  ) : []
+}
 

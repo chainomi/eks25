@@ -70,3 +70,56 @@ variable "karpenter" {
 variable "external_dns" {
   description = "External dns configurations for aws and cloudflare providers"
 }
+
+# CloudWatch Alarms Configuration
+variable "cloudwatch_alarms" {
+  description = "CloudWatch alarms configuration for EKS node groups"
+  type = object({
+    enabled         = optional(bool, true)
+    sns_topic_arn   = optional(string, null)
+
+    cpu = optional(object({
+      threshold           = optional(number, 80)
+      period              = optional(number, 300)
+      evaluation_periods  = optional(number, 2)
+    }), {})
+
+    memory = optional(object({
+      threshold           = optional(number, 80)
+      period              = optional(number, 300)
+      evaluation_periods  = optional(number, 2)
+    }), {})
+
+    disk = optional(object({
+      threshold           = optional(number, 85)
+      period              = optional(number, 300)
+      evaluation_periods  = optional(number, 2)
+    }), {})
+
+    node_count = optional(object({
+      period              = optional(number, 300)
+      evaluation_periods  = optional(number, 2)
+    }), {})
+
+    network = optional(object({
+      errors_threshold    = optional(number, 10)
+      period              = optional(number, 300)
+      evaluation_periods  = optional(number, 2)
+    }), {})
+
+    node_status = optional(object({
+      period              = optional(number, 300)
+      evaluation_periods  = optional(number, 2)
+    }), {})
+
+    pod_count = optional(object({
+      threshold           = optional(number, 100)
+      period              = optional(number, 300)
+      evaluation_periods  = optional(number, 2)
+    }), {})
+  })
+
+  default = {
+    enabled = true
+  }
+}

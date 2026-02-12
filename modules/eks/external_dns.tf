@@ -3,8 +3,8 @@ data "aws_region" "current" {}
 locals {
   region = data.aws_region.current.name
   external_dns = {
-    chart_url     = "https://charts.bitnami.com/bitnami"
-    chart_version = "6.14.4"
+    chart_url     = "https://kubernetes-sigs.github.io/external-dns/"
+    chart_version = "1.19.0"
     namespace     = "kube-system"
 
   }
@@ -26,6 +26,12 @@ resource "helm_release" "external_dns_aws" {
       aws = {
         region = "${local.region}"
       }
+      sources = ["gateway-httproute", 
+                  "gateway-grpcroute",
+                  "gateway-tlsroute",
+                  "service", 
+                  "ingress"
+                ]
       policy        = "sync"
       txtOwnerId    = "${var.cluster_name}-domain"
       domain_filter = []
