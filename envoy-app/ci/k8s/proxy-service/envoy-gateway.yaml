@@ -10,22 +10,14 @@ spec:
     type: Kubernetes
     kubernetes:
       envoyService:
-        type: LoadBalancer
+        name: external-gateway-proxy-service
+        type: ClusterIP
         patch:
           type: StrategicMerge
           value:
             metadata:
               annotations:
-                # service.beta.kubernetes.io/aws-load-balancer-type: "nlb" # using this would prevent nlb from using name and target type annotations
-                service.beta.kubernetes.io/aws-load-balancer-type: "external"
-                service.beta.kubernetes.io/aws-load-balancer-name: "chainomi-external-nlb"
-                service.beta.kubernetes.io/aws-load-balancer-nlb-target-type: "ip"
-                service.beta.kubernetes.io/aws-load-balancer-scheme: "internet-facing"
-                service.beta.kubernetes.io/aws-load-balancer-target-group-attributes: "preserve_client_ip.enabled=true"
-                service.beta.kubernetes.io/aws-load-balancer-ssl-cert: "arn:aws:acm:us-west-1:488144151286:certificate/b1c9bf2e-31c3-4cd9-83de-d09fae059f7a"
-                service.beta.kubernetes.io/aws-load-balancer-ssl-ports: "443"
-                service.beta.kubernetes.io/aws-load-balancer-listen-ports: '[{"HTTPS": 443}, {"HTTP": 80}]'
-                external-dns.alpha.kubernetes.io/hostname: "nginx-external-lb.chainomi.link"
+
 ---
 apiVersion: gateway.networking.k8s.io/v1
 kind: GatewayClass
@@ -47,7 +39,7 @@ metadata:
   namespace: envoy-gateway-system
   annotations:
   #   cert-manager.io/cluster-issuer: letsencrypt-DNS
-     external-dns.alpha.kubernetes.io/target: "nginx-external-lb.chainomi.link"  
+     external-dns.alpha.kubernetes.io/target: "nginx-external-lb-service.chainomi.link"  # hostname of alb ingress, will route traffic from host names in http route through this
 spec:
   gatewayClassName: external-gatewayclass
   listeners:
@@ -69,10 +61,7 @@ kind: HTTPRoute
 metadata:
   name: nginx-route
   namespace: default
-  annotations:
-    # external-dns.alpha.kubernetes.io/hostname: "nginx.chainomi.link"
-    # external-dns.alpha.kubernetes.io/target: "nginx-external-lb.chainomi.link"
-    # external-dns.alpha.kubernetes.io/alias: "false"  
+
 spec:
   parentRefs:
     # - name: external-gateway
@@ -94,22 +83,3 @@ spec:
       backendRefs:
         - name: nginx
           port: 80
-
----
-apiVersion: gateway.networking.k8s.io/v1
-kind: HTTPRoute
-metadata:
-  name: http-to-https-redirect
-  namespace: envoy-gateway-system
-  
-spec:
-  parentRefs:
-    - name: external-gateway
-      namespace: envoy-gateway-system
-      sectionName: http
-  rules:
-    - filters:
-        - type: RequestRedirect
-          requestRedirect:
-            scheme: https
-            statusCode: 301
