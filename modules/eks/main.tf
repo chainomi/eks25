@@ -1,48 +1,15 @@
-# data source for Karpenter 
-data "aws_ecrpublic_authorization_token" "token" {
-  provider = aws.ecr
-}
 
-# Create EKS cluster 
-module "eks" {
-  source  = "terraform-aws-modules/eks/aws"
-  version = "20.34.0"
+locals {
 
-  cluster_name    = var.cluster_name
-  cluster_version = var.cluster_version
-
-  authentication_mode                   = "API_AND_CONFIG_MAP"
-  cluster_additional_security_group_ids = var.additional_cluster_security_groud_ids
-  cluster_endpoint_private_access       = true
-  cluster_endpoint_public_access        = true
-
-  cluster_addons = {
-    coredns = {
-      most_recent = true
-    }
-    eks-pod-identity-agent = { # this is required for Karpenter to function
-      most_recent = true
-    }
-    kube-proxy = {
-      most_recent = true
-    }
-    vpc-cni = {
-      most_recent = true
-    }
-  }
-
-  vpc_id                   = module.vpc.vpc_id
-  subnet_ids               = module.vpc.private_subnets
-  control_plane_subnet_ids = module.vpc.public_subnets
-
-
-  # EKS Managed Node Group(s)
-  # Note - a security group is automatically created for the node group with rules limiting traffic between the node and other cluster resources
   eks_managed_node_group_defaults = {
     # Use below to add additional sg's as to all managed node groups e.g. efs
 
     ami_type               = "AL2023_x86_64_STANDARD"
     vpc_security_group_ids = []
+
+    metadata_options = {
+      http_put_response_hop_limit = 2 # allows pods/ containers to use instance role
+    }
 
     enable_bootstrap_user_data = true
     cloudinit_pre_nodeadm = [{
@@ -72,10 +39,53 @@ module "eks" {
       additional = var.additional_node_policies_arn
     }
   }
+}
 
 
+# data source for Karpenter 
+data "aws_ecrpublic_authorization_token" "token" {
+  provider = aws.ecr
+}
 
-  eks_managed_node_groups = var.managed_node_groups
+# Create EKS cluster 
+module "eks" {
+  source  = "terraform-aws-modules/eks/aws"
+  version = "21.15.1"
+
+  name    = var.cluster_name
+  kubernetes_version = var.cluster_version
+
+  authentication_mode                   = "API_AND_CONFIG_MAP"
+  additional_security_group_ids = var.additional_cluster_security_groud_ids
+  endpoint_private_access       = true
+  endpoint_public_access        = true
+
+  addons = {
+    coredns = {
+      most_recent = true
+    }
+    eks-pod-identity-agent = { # this is required for Karpenter to function
+      most_recent = true
+    }
+    kube-proxy = {
+      most_recent = true
+    }
+    vpc-cni = {
+      most_recent = true
+    }
+  }
+
+  vpc_id                   = module.vpc.vpc_id
+  subnet_ids               = module.vpc.private_subnets
+  control_plane_subnet_ids = module.vpc.public_subnets
+
+
+  # EKS Managed Node Group(s)
+  # Note - a security group is automatically created for the node group with rules limiting traffic between the node and other cluster resources
+
+  eks_managed_node_groups = {
+    for name, config in var.managed_node_groups : name => merge(local.eks_managed_node_group_defaults, config)
+  }
 
   #  EKS K8s API cluster needs to be able to talk with the EKS worker nodes with port 15017/TCP and 15012/TCP which is used by Istio
   #  Istio in order to create sidecar needs to be able to communicate with webhook and for that network passage to EKS is needed.
@@ -273,6 +283,7 @@ module "ebs_csi_driver_irsa" {
 
 module "eks_ack_addons" {
   source = "aws-ia/eks-ack-addons/aws"
+  version = "3.0.3"
 
   # Cluster Info
   cluster_name      = var.cluster_name
