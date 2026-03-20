@@ -64,7 +64,8 @@ variable "additional_cluster_security_groud_ids" {
 }
 
 variable "karpenter" {
-  description = "Karpenter nodeclass and nodepool configuration"
+  description = "Karpenter nodeclass and nodepool configuration. Set to null to disable Karpenter."
+  default     = null
 }
 
 variable "external_dns" {

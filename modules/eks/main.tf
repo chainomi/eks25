@@ -2,6 +2,9 @@
 locals {
 
   eks_managed_node_group_defaults = {
+    
+    enable_monitoring = true #this has been set to false in v21 of EKS module
+    
     # Use below to add additional sg's as to all managed node groups e.g. efs
 
     ami_type               = "AL2023_x86_64_STANDARD"

@@ -59,7 +59,9 @@ module "eks" {
       general = {
         ami_family     = "AL2023"
         ami_alias      = "al2023@latest"
-        instance_types = ["c5a.4xlarge", "c5ad.8xlarge"]
+        instance_category   = ["c", "m", "r"]
+        instance_generation = "4"
+        arch                = ["amd64"]
         capacity_type  = ["on-demand"]
         volume_size    = "50Gi"
         volume_type    = "gp3"

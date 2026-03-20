@@ -1,8 +1,10 @@
 locals {
   karpenter_role_name = "karpenter-role"
+  karpenter_enabled   = var.karpenter != null
 }
 
 module "karpenter" {
+  count   = local.karpenter_enabled ? 1 : 0
   source  = "terraform-aws-modules/eks/aws//modules/karpenter"
   version = "21.15.1"
 
@@ -14,7 +16,8 @@ module "karpenter" {
   create_pod_identity_association = true
 
   # Name needs to match role name passed to the EC2NodeClass
-  node_iam_role_name = local.karpenter_role_name
+  node_iam_role_name            = local.karpenter_role_name
+  node_iam_role_use_name_prefix = false
 
 
   # Used to attach additional IAM policies to the Karpenter node IAM role
@@ -24,6 +27,7 @@ module "karpenter" {
 }
 
 resource "helm_release" "karpenter" {
+  count               = local.karpenter_enabled ? 1 : 0
   namespace           = "kube-system"
   name                = "karpenter"
   repository          = "oci://public.ecr.aws/karpenter"
@@ -36,23 +40,23 @@ resource "helm_release" "karpenter" {
   values = [
     <<-EOT
     serviceAccount:
-      name: ${module.karpenter.service_account}    
+      name: ${module.karpenter[0].service_account}
     nodeSelector:
       karpenter.sh/controller: 'true'
     dnsPolicy: Default
     settings:
       clusterName: ${module.eks.cluster_name}
       clusterEndpoint: ${module.eks.cluster_endpoint}
-      interruptionQueue: ${module.karpenter.queue_name}
+      interruptionQueue: ${module.karpenter[0].queue_name}
     webhook:
-      enabled: false      
+      enabled: false
     EOT
   ]
   depends_on = [module.karpenter]
 }
 
 resource "kubectl_manifest" "ec2_node_class" {
-  for_each = var.karpenter.node_pools
+  for_each = local.karpenter_enabled ? var.karpenter.node_pools : {}
 
   yaml_body = yamlencode({
     apiVersion = "karpenter.k8s.aws/v1"
@@ -73,7 +77,7 @@ resource "kubectl_manifest" "ec2_node_class" {
         sudo sysctl net.ipv6.conf.all.disable_ipv6=1
         sudo /usr/sbin/sysctl net.netfilter.nf_conntrack_tcp_be_liberal=1
       EOT
-      role     = module.karpenter.node_iam_role_name
+      role     = module.karpenter[0].node_iam_role_name
       blockDeviceMappings = [
         {
           deviceName = "/dev/xvda"
@@ -110,7 +114,7 @@ resource "kubectl_manifest" "ec2_node_class" {
 }
 
 resource "kubectl_manifest" "nodepool" {
-  for_each = var.karpenter.node_pools
+  for_each = local.karpenter_enabled ? var.karpenter.node_pools : {}
 
   yaml_body = yamlencode({
     apiVersion = "karpenter.sh/v1"
@@ -126,18 +130,45 @@ resource "kubectl_manifest" "nodepool" {
             kind  = "EC2NodeClass"
             name  = each.key
           }
-          requirements = [
-            {
-              key      = "node.kubernetes.io/instance-type"
-              operator = "In"
-              values   = each.value.instance_types
-            },
-            {
-              key      = "karpenter.sh/capacity-type"
-              operator = "In"
-              values   = each.value.capacity_type
-            }
-          ]
+          requirements = concat(
+            # If instance_types is set, pin to exact types; otherwise use category/generation/arch filters
+            try(each.value.instance_types, null) != null ? [
+              {
+                key      = "node.kubernetes.io/instance-type"
+                operator = "In"
+                values   = each.value.instance_types
+              }
+            ] : concat(
+              try(each.value.instance_category, null) != null ? [
+                {
+                  key      = "karpenter.k8s.aws/instance-category"
+                  operator = "In"
+                  values   = each.value.instance_category
+                }
+              ] : [],
+              try(each.value.instance_generation, null) != null ? [
+                {
+                  key      = "karpenter.k8s.aws/instance-generation"
+                  operator = "Gt"
+                  values   = [tostring(each.value.instance_generation)]
+                }
+              ] : [],
+              try(each.value.arch, null) != null ? [
+                {
+                  key      = "kubernetes.io/arch"
+                  operator = "In"
+                  values   = each.value.arch
+                }
+              ] : []
+            ),
+            [
+              {
+                key      = "karpenter.sh/capacity-type"
+                operator = "In"
+                values   = each.value.capacity_type
+              }
+            ]
+          )
         }
         metadata = {
           labels = each.value.labels
