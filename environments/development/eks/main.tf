@@ -23,7 +23,7 @@ module "eks" {
   source          = "../../../modules/eks/"
   environment     = local.environment
   cluster_name    = local.cluster_name
-  cluster_version = "1.31"
+  cluster_version = "1.33"
 
   # AWS managed nodes configuration
   # https://docs.aws.amazon.com/eks/latest/APIReference/API_Nodegroup.html#AmazonEKS-Type-Nodegroup-amiType
