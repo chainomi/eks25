@@ -38,7 +38,7 @@ module "eks" {
       desired_size = 2
       disk_size    = 50
 
-      instance_types = ["m5.large"]
+      instance_types = ["t3.large"]
       capacity_type  = "ON_DEMAND"
 
       labels = {
